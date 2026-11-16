@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences, language, theme, notification settings, and E2EE key metadata",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated Firebase UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "preferredLanguage": { "type": "string", "enum": ["tr", "en", "de", "es"], "description": "ISO language code" },
+        "darkMode": { "type": "string", "enum": ["system", "dark", "light"], "description": "Theme preference" },
+        "e2eeEnabled": { "type": "boolean", "description": "Whether E2EE vault encryption is active" },
+        "e2eeSaltBase64": { "type": "string", "description": "PBKDF2 salt for E2EE key derivation" },
+        "e2eeKeyFingerprint": { "type": "string", "description": "SHA-256 fingerprint of active encryption key" },
+        "notificationsEnabled": { "type": "boolean", "description": "Master notification toggle" },
+        "notifyDailyDigest": { "type": "boolean", "description": "Daily analytics digest notifications" },
+        "notifySyncAlerts": { "type": "boolean", "description": "Cloud sync & E2EE security alerts" },
+        "notifyAiInsights": { "type": "boolean", "description": "AI completion & insight alerts" },
+        "quietHoursStart": { "type": "integer", "description": "Quiet hours start hour (0-23)" },
+        "quietHoursEnd": { "type": "integer", "description": "Quiet hours end hour (0-23)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "displayName", "preferredLanguage", "darkMode", "e2eeEnabled", "notificationsEnabled", "createdAt", "updatedAt"]
+    },
+    "VaultItem": {
+      "title": "VaultItem",
+      "description": "End-to-end encrypted user record or AI report synced to Firestore",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "title": { "type": "string", "description": "Item title or masked label" },
+        "cipherTextBase64": { "type": "string", "description": "AES-256-GCM encrypted payload in Base64" },
+        "ivBase64": { "type": "string", "description": "12-byte GCM initialization vector in Base64" },
+        "authTagHash": { "type": "string", "description": "SHA-256 integrity hash of payload" },
+        "category": { "type": "string", "enum": ["note", "analytics", "map_place", "ai_insight", "transcript"], "description": "Record category" },
+        "isEncrypted": { "type": "boolean", "description": "Indicates AES-256-GCM E2EE protection" },
+        "isPinned": { "type": "boolean", "description": "Pinned status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "title", "cipherTextBase64", "ivBase64", "authTagHash", "category", "isEncrypted", "isPinned", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Multi-turn Gemini chat message persisted per user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "role": { "type": "string", "enum": ["user", "model"], "description": "Speaker role" },
+        "content": { "type": "string", "description": "Message text content" },
+        "modelName": { "type": "string", "description": "Gemini model identifier" },
+        "thoughtSummary": { "type": "string", "description": "Optional thinking summary" },
+        "groundingSources": { "type": "array", "description": "Optional grounding source URLs or titles" },
+        "latencyMs": { "type": "integer", "description": "Response latency in milliseconds" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" }
+      },
+      "required": ["userId", "role", "content", "modelName", "latencyMs", "createdAt"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "AI & Vault telemetry event for advanced data analytics reports",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "featureType": { "type": "string", "enum": ["chat", "search", "maps", "image", "tts", "music", "video", "transcribe", "live", "vault_e2ee"], "description": "Feature used" },
+        "modelUsed": { "type": "string", "description": "Model or protocol identifier" },
+        "latencyMs": { "type": "integer", "description": "Operation duration in ms" },
+        "tokenEstimate": { "type": "integer", "description": "Estimated tokens or payload bytes" },
+        "isOfflineQueued": { "type": "boolean", "description": "Whether initially recorded offline" },
+        "isEncrypted": { "type": "boolean", "description": "Whether E2EE was applied" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" }
+      },
+      "required": ["userId", "featureType", "modelUsed", "latencyMs", "tokenEstimate", "isOfflineQueued", "isEncrypted", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile, language/theme/notification preferences, and E2EE metadata"
+    },
+    "/users/{userId}/vaultItems/{itemId}": {
+      "schema": { "$ref": "#/entities/VaultItem" },
+      "description": "User-scoped end-to-end encrypted vault notes and analytics snapshots"
+    },
+    "/users/{userId}/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "User-scoped multi-turn Gemini conversation history"
+    },
+    "/users/{userId}/analyticsEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/AnalyticsEvent" },
+      "description": "User-scoped telemetry events for analytics dashboards"
+    }
+  }
+}

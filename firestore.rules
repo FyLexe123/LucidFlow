@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default-deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.preferredLanguage is string && data.preferredLanguage in ['tr', 'en', 'de', 'es'] &&
+             data.darkMode is string && data.darkMode in ['system', 'dark', 'light'] &&
+             data.e2eeEnabled is bool &&
+             (!('e2eeSaltBase64' in data) || data.e2eeSaltBase64 == null || (data.e2eeSaltBase64 is string && data.e2eeSaltBase64.size() <= 128)) &&
+             (!('e2eeKeyFingerprint' in data) || data.e2eeKeyFingerprint == null || (data.e2eeKeyFingerprint is string && data.e2eeKeyFingerprint.size() <= 128)) &&
+             data.notificationsEnabled is bool &&
+             (!('notifyDailyDigest' in data) || data.notifyDailyDigest is bool) &&
+             (!('notifySyncAlerts' in data) || data.notifySyncAlerts is bool) &&
+             (!('notifyAiInsights' in data) || data.notifyAiInsights is bool) &&
+             (!('quietHoursStart' in data) || (data.quietHoursStart is int && data.quietHoursStart >= 0 && data.quietHoursStart <= 23)) &&
+             (!('quietHoursEnd' in data) || (data.quietHoursEnd is int && data.quietHoursEnd >= 0 && data.quietHoursEnd <= 23)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidVaultItem(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.cipherTextBase64 is string && data.cipherTextBase64.size() >= 1 && data.cipherTextBase64.size() <= 65536 &&
+             data.ivBase64 is string && data.ivBase64.size() >= 1 && data.ivBase64.size() <= 64 &&
+             data.authTagHash is string && data.authTagHash.size() >= 1 && data.authTagHash.size() <= 128 &&
+             data.category is string && data.category in ['note', 'analytics', 'map_place', 'ai_insight', 'transcript'] &&
+             data.isEncrypted is bool &&
+             data.isPinned is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidChatMessage(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.role is string && data.role in ['user', 'model'] &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 32768 &&
+             data.modelName is string && data.modelName.size() >= 1 && data.modelName.size() <= 80 &&
+             (!('thoughtSummary' in data) || data.thoughtSummary == null || (data.thoughtSummary is string && data.thoughtSummary.size() <= 16384)) &&
+             (!('groundingSources' in data) || data.groundingSources == null || (data.groundingSources is list && data.groundingSources.size() <= 10 && (data.groundingSources.size() == 0 || (data.groundingSources[0] is string && data.groundingSources[0].size() <= 512)))) &&
+             data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 300000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidAnalyticsEvent(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.featureType is string && data.featureType in ['chat', 'search', 'maps', 'image', 'tts', 'music', 'video', 'transcribe', 'live', 'vault_e2ee'] &&
+             data.modelUsed is string && data.modelUsed.size() >= 1 && data.modelUsed.size() <= 80 &&
+             data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 300000 &&
+             data.tokenEstimate is int && data.tokenEstimate >= 0 && data.tokenEstimate <= 1000000 &&
+             data.isOfflineQueued is bool &&
+             data.isEncrypted is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'preferredLanguage', 'darkMode', 'e2eeEnabled', 'notificationsEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'preferredLanguage', 'darkMode', 'e2eeEnabled', 'e2eeSaltBase64', 'e2eeKeyFingerprint', 'notificationsEnabled', 'notifyDailyDigest', 'notifySyncAlerts', 'notifyAiInsights', 'quietHoursStart', 'quietHoursEnd', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredLanguage', 'darkMode', 'e2eeEnabled', 'e2eeSaltBase64', 'e2eeKeyFingerprint', 'notificationsEnabled', 'notifyDailyDigest', 'notifySyncAlerts', 'notifyAiInsights', 'quietHoursStart', 'quietHoursEnd', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /vaultItems/{itemId} {
+        allow get: if isOwner(userId) && isValidId(itemId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'cipherTextBase64', 'ivBase64', 'authTagHash', 'category', 'isEncrypted', 'isPinned', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'cipherTextBase64', 'ivBase64', 'authTagHash', 'category', 'isEncrypted', 'isPinned', 'createdAt', 'updatedAt']) &&
+                         isValidVaultItem(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         isValidVaultItem(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'cipherTextBase64', 'ivBase64', 'authTagHash', 'category', 'isEncrypted', 'isPinned', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(itemId);
+      }
+
+      match /chatMessages/{messageId} {
+        allow get: if isOwner(userId) && isValidId(messageId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll(['userId', 'role', 'content', 'modelName', 'latencyMs', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'role', 'content', 'modelName', 'thoughtSummary', 'groundingSources', 'latencyMs', 'createdAt']) &&
+                         isValidChatMessage(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(messageId);
+      }
+
+      match /analyticsEvents/{eventId} {
+        allow get: if isOwner(userId) && isValidId(eventId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(eventId) &&
+                         incoming().keys().hasAll(['userId', 'featureType', 'modelUsed', 'latencyMs', 'tokenEstimate', 'isOfflineQueued', 'isEncrypted', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'featureType', 'modelUsed', 'latencyMs', 'tokenEstimate', 'isOfflineQueued', 'isEncrypted', 'createdAt']) &&
+                         isValidAnalyticsEvent(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(eventId);
+      }
+    }
+  }
+}

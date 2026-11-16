@@ -1,0 +1,6 @@
+{
+  "name": "AuraGlass",
+  "description": "Liquid glass AI workspace with end-to-end encrypted cloud sync, offline vault, multilingual analytics, Google Maps grounding, and multimodal Gemini studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

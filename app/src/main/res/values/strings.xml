@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">AuraGlass</string>
+    <string name="notif_channel_digest_name">Analytics Digest</string>
+    <string name="notif_channel_digest_desc">Scheduled data analytics and encrypted vault reports</string>
+    <string name="notif_channel_sync_name">Cloud Sync &amp; Security</string>
+    <string name="notif_channel_sync_desc">End-to-end encryption and offline queue sync alerts</string>
+    <string name="notif_channel_ai_name">AI Insights</string>
+    <string name="notif_channel_ai_desc">Gemini multimodal task and intelligence completions</string>
+</resources>

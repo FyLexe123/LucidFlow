@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">AuraGlass</string>
+    <string name="notif_channel_digest_name">Analitik Özeti</string>
+    <string name="notif_channel_digest_desc">Zamanlanmış veri analitiği ve şifreli kasa raporları</string>
+    <string name="notif_channel_sync_name">Bulut Senkronizasyonu ve Güvenlik</string>
+    <string name="notif_channel_sync_desc">Uçtan uca şifreleme ve çevrimdışı kuyruk senkronizasyon bildirimleri</string>
+    <string name="notif_channel_ai_name">Yapay Zeka İçgörüleri</string>
+    <string name="notif_channel_ai_desc">Gemini çok modlu görev ve analiz tamamlama uyarıları</string>
+</resources>
